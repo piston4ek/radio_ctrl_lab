@@ -1,6 +1,8 @@
 --cpu=Cortex-M4.fp.sp
 ".\slave\startup_stm32f411xe.o"
 ".\slave\main.o"
+".\slave\gpio.o"
+".\slave\spi.o"
 ".\slave\usb_device.o"
 ".\slave\usbd_conf.o"
 ".\slave\usbd_desc.o"
@@ -23,6 +25,7 @@
 ".\slave\stm32f4xx_hal_cortex.o"
 ".\slave\stm32f4xx_hal.o"
 ".\slave\stm32f4xx_hal_exti.o"
+".\slave\stm32f4xx_hal_spi.o"
 ".\slave\stm32f4xx_hal_tim.o"
 ".\slave\stm32f4xx_hal_tim_ex.o"
 ".\slave\system_stm32f4xx.o"

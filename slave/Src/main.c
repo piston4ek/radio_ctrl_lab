@@ -18,11 +18,14 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "spi.h"
 #include "usb_device.h"
+#include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "usbd_cdc_if.h"
+#include "nrf24l01p.h"
 //#include "usbd_cdc_if.c"
 //#include "usbd_cdc.h"
 /* USER CODE END Includes */
@@ -50,7 +53,6 @@
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
-static void MX_GPIO_Init(void);
 /* USER CODE BEGIN PFP */
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin);
 /* USER CODE END PFP */
@@ -90,8 +92,9 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_USB_DEVICE_Init();
+  MX_SPI2_Init();
   /* USER CODE BEGIN 2 */
-	
+	nrf24l01p_rx_init(2500, _1Mbps);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -99,7 +102,7 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-		HAL_Delay(500);
+
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
@@ -150,62 +153,23 @@ void SystemClock_Config(void)
   }
 }
 
+/* USER CODE BEGIN 4 */
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
-	UNUSED(GPIO_Pin);
-	if(GPIO_Pin == Push_Button_Pin)
+	if(GPIO_Pin == NRF24_IRQ_Pin)
 	{
-		char* msg = "Hello, World! It's Slave-Board\n\r";
-		uint16_t len = strlen(msg);
-		if(USBD_OK == CDC_Transmit_FS((uint8_t*)msg, len))
+		uint8_t rx_data[NRF24L01P_PAYLOAD_LENGTH];
+		nrf24l01p_rx_receive(rx_data);
+		char msg[100];
+		sprintf(msg, "Received bytes:\n\r0: %0d\n\r1: %0d\n\r2: %0d\n\r", 
+            rx_data[0], rx_data[1], rx_data[2]);
+
+		if(USBD_OK == CDC_Transmit_FS((uint8_t*)msg, (uint16_t)strlen(msg)))
 		{
 			HAL_GPIO_TogglePin(USB_LED_GPIO_Port, USB_LED_Pin);
 		}
 	}
 }
-
-/**
-  * @brief GPIO Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_GPIO_Init(void)
-{
-  GPIO_InitTypeDef GPIO_InitStruct = {0};
-/* USER CODE BEGIN MX_GPIO_Init_1 */
-/* USER CODE END MX_GPIO_Init_1 */
-
-  /* GPIO Ports Clock Enable */
-  __HAL_RCC_GPIOH_CLK_ENABLE();
-  __HAL_RCC_GPIOA_CLK_ENABLE();
-  __HAL_RCC_GPIOD_CLK_ENABLE();
-
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(USB_LED_GPIO_Port, USB_LED_Pin, GPIO_PIN_RESET);
-
-  /*Configure GPIO pin : Push_Button_Pin */
-  GPIO_InitStruct.Pin = Push_Button_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(Push_Button_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : USB_LED_Pin */
-  GPIO_InitStruct.Pin = USB_LED_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(USB_LED_GPIO_Port, &GPIO_InitStruct);
-
-  /* EXTI interrupt init*/
-  HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(EXTI0_IRQn);
-
-/* USER CODE BEGIN MX_GPIO_Init_2 */
-/* USER CODE END MX_GPIO_Init_2 */
-}
-
-/* USER CODE BEGIN 4 */
-
 /* USER CODE END 4 */
 
 /**
