@@ -35,7 +35,15 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define HEADER 0x55
+// Status
+#define WITHOUT_OP    0x00
+#define OK            0x01
+#define INVALID_HDR   0x02
+#define INVALID_CRC   0x03
+#define UNDEFINED_ERR 0x04
 
+#define CH_MHZ 2500
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -59,6 +67,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 uint8_t tx_data[NRF24L01P_PAYLOAD_LENGTH] = {0, 1, 2};
+uint8_t rx_data[NRF24L01P_PAYLOAD_LENGTH] = {0, 1, 2};
 /* USER CODE END 0 */
 
 /**
@@ -93,7 +102,7 @@ int main(void)
   MX_USB_DEVICE_Init();
   MX_SPI2_Init();
   /* USER CODE BEGIN 2 */
-	nrf24l01p_tx_init(2500, _1Mbps);
+	nrf24l01p_tx_init(CH_MHZ, _1Mbps);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -153,31 +162,66 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+int tx_mode = 1;
+
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
 	//UNUSED(GPIO_Pin);
 	
 	if(GPIO_Pin == Push_Button_Pin)
 	{
-		for(int i = 0; i < NRF24L01P_PAYLOAD_LENGTH; ++i)
-		{
-			tx_data[i]++;
-		}
-		char msg[100];
-		sprintf(msg, "Bytes to send:\n\r0: %0d\n\r1: %0d\n\r2: %0d\n\r", 
-            tx_data[0], tx_data[1], tx_data[2]);
+		nrf24l01p_ptx_mode();
+		tx_mode = 1;
+		tx_data[0] = HEADER;
+		tx_data[2] = tx_data[0] + (++tx_data[1]);  // Control Sum
+
 		nrf24l01p_tx_transmit(tx_data);
 		
-		if(USBD_OK == CDC_Transmit_FS((uint8_t*)msg, (uint16_t)strlen(msg)))
-		{
-			HAL_GPIO_TogglePin(USB_LED_GPIO_Port, USB_LED_Pin);
-		}
-		//HAL_Delay(100);
+		nrf24l01p_prx_mode();
+		tx_mode = 0;
+		
+		HAL_GPIO_TogglePin(USB_LED_GPIO_Port, USB_LED_Pin);
 	}
 	
 	if(GPIO_Pin == NRF24L01P_IRQ_PIN_NUMBER)
 	{
-		nrf24l01p_tx_irq(); // clear interrupt flag
+		if(tx_mode)
+		{
+			nrf24l01p_tx_irq(); // clear interrupt flag
+		}
+		else
+		{
+			// RCV Respond
+			//nrf24l01p_tx_irq();
+			char msg[200];
+			//HAL_Delay(100);
+			nrf24l01p_rx_receive(rx_data);
+			
+			if(rx_data[0] == HEADER)
+			{
+				if((rx_data[0] + rx_data[1]) == rx_data[2])
+				{
+					sprintf(msg, "\n[MASTER] : RESPOND FROM SLAVE:\n\r0: 0x%0x\n\r1: 0x%0x\n\r2: 0x%0x\n\rCommunication established\n\r", 
+            rx_data[0], rx_data[1], rx_data[2]);
+				}
+				else
+				{
+					sprintf(msg, "\n[MASTER] : RESPOND FROM SLAVE:\n\r0: 0x%0x\n\r1: 0x%0x\n\r2: 0x%0x\n\rCRC Mismatched\n\r", 
+            rx_data[0], rx_data[1], rx_data[2]);
+				}
+			}
+			else
+			{
+				//sprintf(additional_txt, "Invalid Header\n\r");
+				sprintf(msg, "\n[MASTER] : RESPOND FROM SLAVE:\n\r0: 0x%0x\n\r1: 0x%0x\n\r2: 0x%0x\n\rInvalid Header\n\r", 
+            rx_data[0], rx_data[1], rx_data[2]);
+			}
+		
+			CDC_Transmit_FS((uint8_t*)msg, (uint16_t)strlen(msg));
+			
+			nrf24l01p_ptx_mode();
+			tx_mode = 1;
+		}
 	}
 	
 }

@@ -37,7 +37,15 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define HEADER 0x55
+// Status
+#define WITHOUT_OP     0x00
+#define OK             0x01
+#define INVALID_HEADER 0x02
+#define INVALID_CRC    0x03
+#define UNDEFINED_ERR  0x04
 
+#define CH_MHZ 2500
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -59,7 +67,8 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+uint8_t rx_data[NRF24L01P_PAYLOAD_LENGTH] = {0, 1, 2};
+uint8_t tx_data[NRF24L01P_PAYLOAD_LENGTH] = {0, 1, 2};
 /* USER CODE END 0 */
 
 /**
@@ -158,16 +167,53 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
 	if(GPIO_Pin == NRF24_IRQ_Pin)
 	{
-		uint8_t rx_data[NRF24L01P_PAYLOAD_LENGTH];
+		uint8_t crc;
+		uint8_t status;
+		
+		
+		// Receive & Start Analyze
 		nrf24l01p_rx_receive(rx_data);
-		char msg[100];
-		sprintf(msg, "Received bytes:\n\r0: %0d\n\r1: %0d\n\r2: %0d\n\r", 
-            rx_data[0], rx_data[1], rx_data[2]);
-
-		if(USBD_OK == CDC_Transmit_FS((uint8_t*)msg, (uint16_t)strlen(msg)))
+		char msg[150];
+		if(rx_data[0] == HEADER)
 		{
-			HAL_GPIO_TogglePin(USB_LED_GPIO_Port, USB_LED_Pin);
+			crc = rx_data[0] + rx_data[1];
+			if(crc == rx_data[2])
+			{
+				sprintf(msg, "\n[SLAVE] : Received bytes:\n\r0: 0x%0x\n\r1: 0x%0x\n\r2: 0x%0x\n\rPacket is OK\n\r", 
+            rx_data[0], rx_data[1], rx_data[2]);
+				status = OK;
+			}
+			else
+			{
+				sprintf(msg, "\n[SLAVE] : Received bytes:\n\r0: 0x%0x\n\r1: 0x%0x\n\r2: 0x%0x\n\rCRC Mismatched\n\r", 
+            rx_data[0], rx_data[1], rx_data[2]);
+				status = INVALID_CRC;
+			}
 		}
+		else
+		{
+			sprintf(msg, "\n[SLAVE] : Received bytes:\n\r0: 0x%0x\n\r1: 0x%0x\n\r2: 0x%0x\n\rInvalid Header\n\r", 
+            rx_data[0], rx_data[1], rx_data[2]);
+			status = INVALID_HEADER;
+		}
+		
+		CDC_Transmit_FS((uint8_t*)msg, (uint16_t)strlen(msg));
+		
+		HAL_GPIO_TogglePin(USB_LED_GPIO_Port, USB_LED_Pin);
+		
+		//HAL_Delay(100);
+		
+		// Send respond
+		nrf24l01p_ptx_mode();
+		//nrf24l01p_tx_init(2500, _1Mbps);
+		tx_data[0] = HEADER;
+		tx_data[1] = status;
+		tx_data[2] = tx_data[0] + tx_data[1];
+		//HAL_Delay(10);
+		nrf24l01p_tx_transmit(tx_data);
+		
+		// Back to receive mode
+		nrf24l01p_prx_mode();
 	}
 }
 /* USER CODE END 4 */
