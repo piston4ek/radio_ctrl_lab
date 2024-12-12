@@ -19,7 +19,6 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "adc.h"
-#include "dma.h"
 #include "spi.h"
 #include "usb_device.h"
 #include "gpio.h"
@@ -70,7 +69,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin);
 /* USER CODE BEGIN 0 */
 uint8_t tx_data[NRF24L01P_PAYLOAD_LENGTH] = {0, 1, 2};
 //uint8_t rx_data[NRF24L01P_PAYLOAD_LENGTH] = {0, 1, 2};
-uint16_t adc_val[1];
+uint16_t adc_val[2];
 /* USER CODE END 0 */
 
 /**
@@ -102,13 +101,21 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_DMA_Init();
   MX_USB_DEVICE_Init();
   MX_SPI2_Init();
   MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
 	//HAL_ADCEx_Calibration_Start();
-	HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc_val, 1);
+	//HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc_val, 2);
+	ADC_ChannelConfTypeDef Channel_AN0; // create an instance of ADC_ChannelConfTypeDef
+	Channel_AN0.Channel = ADC_CHANNEL_14; // select analog channel 0
+	Channel_AN0.Rank = 1; // set rank to 1
+	Channel_AN0.SamplingTime = ADC_SAMPLETIME_15CYCLES; // set sampling time to 15 clock cycles
+	
+	ADC_ChannelConfTypeDef Channel_AN1; // create an instance of ADC_ChannelConfTypeDef
+	Channel_AN1.Channel = ADC_CHANNEL_15; // select analog channel 1
+	Channel_AN1.Rank = 1; // set rank to 1
+	Channel_AN1.SamplingTime = ADC_SAMPLETIME_15CYCLES; // set sampling time to 15 clock cycles
 	
 	nrf24l01p_tx_init(CH_MHZ, _1Mbps);
   /* USER CODE END 2 */
@@ -120,6 +127,25 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+		//HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc_val, 2);
+		HAL_ADC_ConfigChannel(&hadc1, &Channel_AN0);
+		HAL_ADC_Start(&hadc1); // start A/D conversion
+		if(HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY) == HAL_OK){
+			HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_14);  // RED LED 
+			adc_val[0] = HAL_ADC_GetValue(&hadc1); 
+		}
+		HAL_ADC_Stop(&hadc1); // stop conversion 
+		
+		// Read y value
+		HAL_ADC_ConfigChannel(&hadc1, &Channel_AN1);
+		HAL_ADC_Start(&hadc1); // start A/D conversion
+		if(HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY) == HAL_OK){
+			HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_15);  // BLUE LED 
+			adc_val[1]  = HAL_ADC_GetValue(&hadc1); 
+		}
+		HAL_ADC_Stop(&hadc1); // stop conversion 
+		
+		HAL_Delay(100);
 		//HAL_ADC_Start_DMA(
   }
   /* USER CODE END 3 */
@@ -182,14 +208,14 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 		//nrf24l01p_ptx_mode();
 		//tx_mode = 1;
 		char msg [150];
-		sprintf(msg, "x = %0d; y = %0d\n\r", adc_val[0],adc_val[0] /*adc_val[1]*/);
+		sprintf(msg, "x = %0d; y = %0d\n\r", adc_val[0],adc_val[1] /*adc_val[1]*/);
 		CDC_Transmit_FS((uint8_t*)msg , (uint16_t)strlen(msg));
 		
 		tx_data[0] = HEADER;
-		//tx_data[1] = adc_val[0] & 0xFF00; // MSB
-		//tx_data[2] = adc_val[0] & 0x00FF; // LSB
-		//tx_data[3] = adc_val[1] & 0xFF00; // MSB
-		//tx_data[4] = adc_val[1] & 0x00FF; // LSB
+		tx_data[1] = (uint8_t)(adc_val[0] & 0xFF);        // LSB
+		tx_data[2] = (uint8_t)((adc_val[0] >> 8) & 0xFF); // MSB
+		tx_data[3] = (uint8_t)(adc_val[1] & 0xFF);        // LSB
+		tx_data[4] = (uint8_t)((adc_val[1] >> 8) & 0xFF); // MSB
 		tx_data[5] = 0x00;
 		for(int i = 0; i < 5; ++i)
 		{

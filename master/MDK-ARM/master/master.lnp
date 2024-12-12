@@ -4,7 +4,6 @@
 "master\main.o"
 "master\gpio.o"
 "master\adc.o"
-"master\dma.o"
 "master\spi.o"
 "master\usb_device.o"
 "master\usbd_conf.o"
