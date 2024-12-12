@@ -167,33 +167,40 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
 	if(GPIO_Pin == NRF24_IRQ_Pin)
 	{
-		uint8_t crc;
+		uint8_t crc = 0x00;
 		uint8_t status;
-		
+		uint16_t val_x, val_y;
 		
 		// Receive & Start Analyze
 		nrf24l01p_rx_receive(rx_data);
-		char msg[150];
+		char msg[300];
 		if(rx_data[0] == HEADER)
 		{
-			crc = rx_data[0] + rx_data[1];
-			if(crc == rx_data[2])
+			for(int i = 0; i < 5; ++i)
 			{
-				sprintf(msg, "\n[SLAVE] : Received bytes:\n\r0: 0x%0x\n\r1: 0x%0x\n\r2: 0x%0x\n\rPacket is OK\n\r", 
-            rx_data[0], rx_data[1], rx_data[2]);
+				crc+= rx_data[i];
+			}
+			
+			//crc = rx_data[0] + rx_data[1];
+			if(crc == rx_data[5])
+			{
+				val_x = ( (uint16_t)rx_data[1] << 8 ) | rx_data[2];
+				val_y = ( (uint16_t)rx_data[3] << 8 ) | rx_data[4];
+				sprintf(msg, "\n[SLAVE] : Received bytes:\n\r0: 0x%0x\n\r1: 0x%0x\n\r2: 0x%0x\n\r3: 0x%0x\n\r4: 0x%0x\n\r5: 0x%0x\n\r(x, y) = (%4d, %4d)\n\rPacket is OK\n\r", 
+            rx_data[0], rx_data[1], rx_data[2], rx_data[3], rx_data[4], rx_data[5], val_x, val_y);
 				status = OK;
 			}
 			else
 			{
-				sprintf(msg, "\n[SLAVE] : Received bytes:\n\r0: 0x%0x\n\r1: 0x%0x\n\r2: 0x%0x\n\rCRC Mismatched\n\r", 
-            rx_data[0], rx_data[1], rx_data[2]);
+				sprintf(msg, "\n[SLAVE] : Received bytes:\n\r0: 0x%0x\n\r1: 0x%0x\n\r2: 0x%0x\n\r3: 0x%0x\n\r4: 0x%0x\n\r5: 0x%0x\n\rCRC Mismatched\n\r", 
+            rx_data[0], rx_data[1], rx_data[2], rx_data[3], rx_data[4], rx_data[5]);
 				status = INVALID_CRC;
 			}
 		}
 		else
 		{
-			sprintf(msg, "\n[SLAVE] : Received bytes:\n\r0: 0x%0x\n\r1: 0x%0x\n\r2: 0x%0x\n\rInvalid Header\n\r", 
-            rx_data[0], rx_data[1], rx_data[2]);
+			sprintf(msg, "\n[SLAVE] : Received bytes:\n\r0: 0x%0x\n\r1: 0x%0x\n\r2: 0x%0x\n\r3: 0x%0x\n\r4: 0x%0x\n\r5: 0x%0x\n\rInvalid Header\n\r", 
+            rx_data[0], rx_data[1], rx_data[2], rx_data[3], rx_data[4], rx_data[5]);
 			status = INVALID_HEADER;
 		}
 		
@@ -201,6 +208,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 		
 		HAL_GPIO_TogglePin(USB_LED_GPIO_Port, USB_LED_Pin);
 		
+		/*
 		//HAL_Delay(100);
 		
 		// Send respond
@@ -214,6 +222,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 		
 		// Back to receive mode
 		nrf24l01p_prx_mode();
+		*/
 	}
 }
 /* USER CODE END 4 */

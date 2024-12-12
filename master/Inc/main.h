@@ -67,6 +67,10 @@ void Error_Handler(void);
 #define NRF24_IRQ_Pin GPIO_PIN_1
 #define NRF24_IRQ_GPIO_Port GPIOA
 #define NRF24_IRQ_EXTI_IRQn EXTI1_IRQn
+#define VRx_Pin GPIO_PIN_4
+#define VRx_GPIO_Port GPIOC
+#define VRy_Pin GPIO_PIN_5
+#define VRy_GPIO_Port GPIOC
 #define USB_LED_Pin GPIO_PIN_12
 #define USB_LED_GPIO_Port GPIOD
 

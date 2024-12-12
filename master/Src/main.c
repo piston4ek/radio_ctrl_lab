@@ -18,6 +18,8 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "adc.h"
+#include "dma.h"
 #include "spi.h"
 #include "usb_device.h"
 #include "gpio.h"
@@ -67,7 +69,8 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 uint8_t tx_data[NRF24L01P_PAYLOAD_LENGTH] = {0, 1, 2};
-uint8_t rx_data[NRF24L01P_PAYLOAD_LENGTH] = {0, 1, 2};
+//uint8_t rx_data[NRF24L01P_PAYLOAD_LENGTH] = {0, 1, 2};
+uint16_t adc_val[1];
 /* USER CODE END 0 */
 
 /**
@@ -99,9 +102,14 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_USB_DEVICE_Init();
   MX_SPI2_Init();
+  MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
+	//HAL_ADCEx_Calibration_Start();
+	HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc_val, 1);
+	
 	nrf24l01p_tx_init(CH_MHZ, _1Mbps);
   /* USER CODE END 2 */
 
@@ -112,6 +120,7 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+		//HAL_ADC_Start_DMA(
   }
   /* USER CODE END 3 */
 }
@@ -162,7 +171,7 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
-int tx_mode = 1;
+//int tx_mode = 1;
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
@@ -170,26 +179,38 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	
 	if(GPIO_Pin == Push_Button_Pin)
 	{
-		nrf24l01p_ptx_mode();
-		tx_mode = 1;
+		//nrf24l01p_ptx_mode();
+		//tx_mode = 1;
+		char msg [150];
+		sprintf(msg, "x = %0d; y = %0d\n\r", adc_val[0],adc_val[0] /*adc_val[1]*/);
+		CDC_Transmit_FS((uint8_t*)msg , (uint16_t)strlen(msg));
+		
 		tx_data[0] = HEADER;
-		tx_data[2] = tx_data[0] + (++tx_data[1]);  // Control Sum
+		//tx_data[1] = adc_val[0] & 0xFF00; // MSB
+		//tx_data[2] = adc_val[0] & 0x00FF; // LSB
+		//tx_data[3] = adc_val[1] & 0xFF00; // MSB
+		//tx_data[4] = adc_val[1] & 0x00FF; // LSB
+		tx_data[5] = 0x00;
+		for(int i = 0; i < 5; ++i)
+		{
+			tx_data[5]+= tx_data[i];
+		}
 
 		nrf24l01p_tx_transmit(tx_data);
 		
-		nrf24l01p_prx_mode();
-		tx_mode = 0;
+		//nrf24l01p_prx_mode();
+		//tx_mode = 0;
 		
 		HAL_GPIO_TogglePin(USB_LED_GPIO_Port, USB_LED_Pin);
 	}
 	
 	if(GPIO_Pin == NRF24L01P_IRQ_PIN_NUMBER)
 	{
-		if(tx_mode)
-		{
+		//if(tx_mode)
+		//{
 			nrf24l01p_tx_irq(); // clear interrupt flag
-		}
-		else
+		//}
+		/*else
 		{
 			// RCV Respond
 			//nrf24l01p_tx_irq();
@@ -221,7 +242,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 			
 			nrf24l01p_ptx_mode();
 			tx_mode = 1;
-		}
+		}*/
 	}
 	
 }

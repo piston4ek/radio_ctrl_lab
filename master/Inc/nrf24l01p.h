@@ -28,7 +28,7 @@
 #define NRF24L01P_IRQ_PIN_PORT            NRF24_IRQ_GPIO_Port
 #define NRF24L01P_IRQ_PIN_NUMBER          NRF24_IRQ_Pin
 
-#define NRF24L01P_PAYLOAD_LENGTH          3     // 1 - 32bytes
+#define NRF24L01P_PAYLOAD_LENGTH          6     // 1 - 32bytes
 
 
 /* nRF24L01+ typedefs */
