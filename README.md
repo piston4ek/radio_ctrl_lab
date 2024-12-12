@@ -14,6 +14,7 @@
 **Використаний Інвентар**:  
   - **STM32F411VE Discovery Board** - 1 [pc];
   - Single chip 2.4 GHz Transceiver **nRF24L01** - 1 [pc];  
+  - **Joystick HW-504** - 1 [pc];
 
 #### Slave  
 
@@ -30,3 +31,7 @@
   
 #### v1.1
   - підключено **nRF24L01** та реалізовано передачу в 1 бік
+  
+#### v1.2
+  - підключено **Joystick HW-504** до *Master*
+  
