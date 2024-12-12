@@ -14,7 +14,21 @@
 **Використаний Інвентар**:  
   - **STM32F411VE Discovery Board** - 1 [pc];
   - Single chip 2.4 GHz Transceiver **nRF24L01** - 1 [pc];  
-  - **Joystick HW-504** - 1 [pc];
+  - **Joystick HW-504** - 1 [pc];  
+  
+**Формат передачі даних**
+
+|Номер|  Опис байту|
+|-----|------------|
+|0    |HEADER      |
+|1    |Vrx LSB     |
+|2    |Vrx MSB     |
+|3    |Vry LSB     |
+|4    |Vry MSB     |
+|5    |CRC         |  
+
+де *HEADER* - шапка протоколу 0x55,
+   *CRC* - контрольна сума;
 
 #### Slave  
 
